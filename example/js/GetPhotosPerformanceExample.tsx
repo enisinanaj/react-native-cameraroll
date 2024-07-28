@@ -9,7 +9,7 @@ import {
   Keyboard,
 } from 'react-native';
 // @ts-ignore: CameraRollExample has no typings in same folder
-import CameraRoll from '../../js/CameraRoll';
+import CameraRoll from '../../src/CameraRoll';
 
 interface State {
   fetchingPhotos: boolean;
@@ -29,6 +29,7 @@ const includeValues: CameraRoll.Include[] = [
   'location',
   'imageSize',
   'playableDuration',
+  'albums',
 ];
 
 /**

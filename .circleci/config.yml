@@ -1,28 +1,34 @@
 version: 2.1
 
 orbs:
-  rn: react-native-community/react-native@4.0.4
+  rn: react-native-community/react-native@7.1.1
+  node: circleci/node@5.1.1
 
 jobs:
   checkout_code:
     executor: rn/linux_js
     steps:
       - checkout
+      - node/install:
+          install-yarn: true
+          node-version: '20.10.0'
       - persist_to_workspace:
           root: .
-          paths: .
-  analyze:
+          paths:
+            - .
+
+  analyse_js:
     executor: rn/linux_js
     steps:
+      - node/install:
+          install-yarn: true
+          node-version: '20.10.0'
       - attach_workspace:
           at: .
       - rn/yarn_install
       - run:
           name: Eslint
           command: yarn run validate:eslint
-      - run:
-          name: Flow
-          command: yarn run validate:flow
       - run:
           name: TypeScript
           command: yarn run validate:typescript
@@ -31,15 +37,18 @@ jobs:
           command: yarn run test:jest
       - run:
           name: Android JavaScript Bundle
-          command: yarn run test:detox:android:bundle:release
+          command: export NODE_OPTIONS=--openssl-legacy-provider && yarn run test:detox:android:bundle:release
       - run:
           name: iOS JavaScript Bundle
-          command: yarn run test:detox:ios:bundle:release
+          command: export NODE_OPTIONS=--openssl-legacy-provider && yarn run test:detox:ios:bundle:release
   publish:
     executor: rn/linux_js
     steps:
       - attach_workspace:
           at: .
+      - node/install:
+          install-yarn: true
+          node-version: '20.10.0'
       - rn/yarn_install
       - run:
           name: Publish to NPM
@@ -49,39 +58,33 @@ workflows:
   test:
     jobs:
       - checkout_code
-      - analyze:
+      - analyse_js:
           requires:
             - checkout_code
-      - rn/android_build:
-          name: android_debug_build
-          project_path: "example/android"
-          build_type: debug
-          requires:
-            - analyze
-      - rn/android_build:
-          name: android_release_build
-          project_path: "example/android"
-          build_type: release
-          requires:
-            - analyze
-      # - rn/android_test:
-      #     logcat_grep: "com.camerarollexample"
-      #     detox_configuration: "android.emu.release"
+      # TODO: customize node version or change the builder.
+      # - rn/android_build:
+      #     build_type: release
+      #     name: build_android_release
+      #     project_path: android
+      #     store_artifacts: false
+      #     persist_to_workspace: false
       #     requires:
-      #       - android_release_build
-      # - rn/ios_build_and_test:
-      #     project_path: "example/ios/CameraRollExample.xcodeproj"
-      #     derived_data_path: "example/ios/build"
-      #     device: "iPhone X"
-      #     build_configuration: "Release"
-      #     scheme: "CameraRollExample"
-      #     detox_configuration: "ios.sim.release"
+      #       - analyse_js
+      # - rn/ios_build:
+      #     build_configuration: Debug
+      #     device: iPhone 11
+      #     name: build_ios_debug
+      #     project_path: example/ios/CameraRollExample.xcworkspace
+      #     project_type: workspace
+      #     node_version: '20.10.0'
       #     requires:
-      #       - analyze
+      #       - analyse_js
+      #     scheme: CameraRollExample
       - publish:
           requires:
-            - android_debug_build
-            - android_release_build
+            - analyse_js
+          #   - build_android_release
+          #   - build_ios_debug
           filters:
             branches:
               only: master
